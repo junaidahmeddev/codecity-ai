@@ -1,0 +1,16 @@
+{
+  "name": "@codecity/shared",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

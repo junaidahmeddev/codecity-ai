@@ -1,16 +1,24 @@
 {
   "name": "codecity-ai",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "description": "Transform GitHub repositories into interactive 3D Cyberpunk Metropolises",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm run dev --workspace=apps/frontend & npm run dev --workspace=apps/backend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "build:shared": "npm run build --workspace=packages/shared",
+    "build": "npm run build:shared && npm run build --workspace=apps/backend && npm run build --workspace=apps/frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }

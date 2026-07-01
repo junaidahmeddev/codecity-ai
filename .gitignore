@@ -1,7 +1,41 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
 build/
+*.tsbuildinfo
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# OS artifacts
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+pino-*.log
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# Test coverage
 coverage/
+
+# Redis dump
+dump.rdb
+
+# Git clone sandbox (runtime temp files from ingestion pipeline)
+.sandbox/
+
+# WASM grammar cache (regenerated at build time)
+*.wasm
+!apps/backend/grammars/*.wasm
+
+# Docker
+.dockerignore

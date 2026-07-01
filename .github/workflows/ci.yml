@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════
+# CodeCity AI — CI Pipeline
+# ═══════════════════════════════════════════════════════════
+# Gates: lint, typecheck, unit tests
+# Runs on every push and PR to main
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared types
+        run: npm run build:shared
+
+      - name: Typecheck all workspaces
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      # TODO (Phase 6): Uncomment when Vitest is configured
+      # - name: Unit Tests
+      #   run: npm run test
+
+      # TODO (Phase 6): Lighthouse perf budget gate
+      # - name: Lighthouse CI
+      #   run: npx lhci autorun

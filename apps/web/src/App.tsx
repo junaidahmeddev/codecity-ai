@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import { trpc } from './utils/trpc.js';
+import { CityScene } from './components/CityScene.js';
 
 /**
  * Matrix Digital Rain — lightweight canvas-based falling code effect.
@@ -157,12 +158,11 @@ function App() {
     {
       enabled: !!jobId,
       refetchInterval: (query) => {
-        // Stop refetching once status is complete or failed
         const state = query.state.data;
         if (state?.status === 'complete' || state?.status === 'failed') {
           return false;
         }
-        return 1000; // Poll every 1s
+        return 1000;
       },
     }
   );
@@ -178,9 +178,17 @@ function App() {
     submitMutation.mutate({ repoUrl });
   };
 
+  const handleReset = () => {
+    setJobId(null);
+    setRepoUrl('');
+  };
+
+  const isComplete = jobStatus?.status === 'complete' && !!jobStatus.result;
+
   return (
     <div className="app scanlines">
-      <MatrixRain />
+      {!isComplete && <MatrixRain />}
+      {isComplete && <CityScene layout={jobStatus.result!.layout} />}
 
       {/* ── HUD Top Bar ──────────────────────────────────── */}
       <header className="hud-top">
@@ -200,143 +208,189 @@ function App() {
       </header>
 
       {/* ── Main Content ─────────────────────────────────── */}
-      <main className="main-content" style={{ opacity: showContent ? 1 : 0 }}>
-        {/* Terminal Header */}
-        <div className="terminal-header">
-          <span className="prompt">{'>'}</span>
-          <span className="terminal-path">~/codecity</span>
-          <span className="prompt"> $</span>
-          <span className="command"> initialize --mode=metropolis</span>
-        </div>
-
-        {/* Title */}
-        <h1 className="title">
-          {title}
-          <span className="cursor-blink">{titleDone ? '█' : '▌'}</span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="subtitle">{subtitle}</p>
-
-        {/* Repo Input */}
-        <form onSubmit={handleGenerate} className="input-section">
-          <div className="input-wrapper">
-            <span className="input-prefix">{'>'} git clone</span>
-            <input
-              type="text"
-              className="repo-input"
-              placeholder="https://github.com/user/repo"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              disabled={submitMutation.isPending || (!!jobStatus && jobStatus.status !== 'complete' && jobStatus.status !== 'failed')}
-              spellCheck={false}
-            />
+      {!isComplete ? (
+        <main className="main-content" style={{ opacity: showContent ? 1 : 0 }}>
+          {/* Terminal Header */}
+          <div className="terminal-header">
+            <span className="prompt">{'>'}</span>
+            <span className="terminal-path">~/codecity</span>
+            <span className="prompt"> $</span>
+            <span className="command"> initialize --mode=metropolis</span>
           </div>
-          <button
-            type="submit"
-            className="generate-btn"
-            disabled={!repoUrl.trim() || submitMutation.isPending || (!!jobStatus && jobStatus.status !== 'complete' && jobStatus.status !== 'failed')}
-          >
-            <span className="btn-text">
-              {submitMutation.isPending ? 'CONNECTING...' : 'GENERATE CITY'}
-            </span>
-            <span className="btn-icon">→</span>
-          </button>
-        </form>
 
-        {/* Ingestion Status Terminal Overlay */}
-        {jobStatus && (
-          <div className="terminal-console">
-            <div className="console-header">
-              <span className="console-title">INGESTION PIPELINE LOGS</span>
-              <span className="console-progress">{jobStatus.progress}%</span>
-            </div>
-            <div className="console-body">
-              <p className="log-line text-signal-dim">[pipeline] Target: {jobStatus.repoName}</p>
-              <p className="log-line text-signal-dim">[pipeline] Job ID: {jobStatus.jobId}</p>
+          {/* Title */}
+          <h1 className="title">
+            {title}
+            <span className="cursor-blink">{titleDone ? '█' : '▌'}</span>
+          </h1>
 
-              {jobStatus.status === 'queued' && (
-                <p className="log-line text-signal-core anim-pulse">⏳ Queueing job in background pool...</p>
-              )}
-              {jobStatus.status === 'cloning' && (
-                <p className="log-line text-signal-core anim-pulse">📥 [CLONING] Securely cloning repo into cgroup container...</p>
-              )}
-              {jobStatus.status === 'parsing' && (
-                <p className="log-line text-signal-core">
-                  ⚙️ [PARSING] Analyzing syntax with Web Tree-Sitter grammars ({jobStatus.progress}%)
-                </p>
-              )}
-              {jobStatus.status === 'layouting' && (
-                <p className="log-line text-signal-core anim-pulse">🧬 [LAYOUTING] Packing buildings into district structures...</p>
-              )}
-              {jobStatus.status === 'complete' && jobStatus.result && (
-                <>
-                  <p className="log-line text-signal-bright">✅ [SUCCESS] AST normalizations completed! Metropolis is ready.</p>
-                  <p className="log-line text-signal-peak">
-                    📊 Stats: {jobStatus.result.repository.stats.totalFiles} Files parsed ·{' '}
-                    {jobStatus.result.repository.stats.totalLoc.toLocaleString()} LOC mapped
-                  </p>
-                </>
-              )}
-              {jobStatus.status === 'failed' && (
-                <p className="log-line text-signal-critical">
-                  ❌ [ERROR] Ingestion crashed: {jobStatus.error || 'Unknown pipeline failure.'}
-                </p>
-              )}
-            </div>
-            {/* Progress bar line */}
-            <div className="console-bar-container">
-              <div 
-                className={`console-bar ${jobStatus.status === 'failed' ? 'bg-signal-critical' : 'bg-signal-core'}`}
-                style={{ width: `${jobStatus.progress}%` }} 
+          {/* Subtitle */}
+          <p className="subtitle">{subtitle}</p>
+
+          {/* Repo Input */}
+          <form onSubmit={handleGenerate} className="input-section">
+            <div className="input-wrapper">
+              <span className="input-prefix">{'>'} git clone</span>
+              <input
+                type="text"
+                className="repo-input"
+                placeholder="https://github.com/user/repo"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                disabled={submitMutation.isPending || (!!jobStatus && jobStatus.status !== 'complete' && jobStatus.status !== 'failed')}
+                spellCheck={false}
               />
             </div>
-          </div>
-        )}
+            <button
+              type="submit"
+              className="generate-btn"
+              disabled={!repoUrl.trim() || submitMutation.isPending || (!!jobStatus && jobStatus.status !== 'complete' && jobStatus.status !== 'failed')}
+            >
+              <span className="btn-text">
+                {submitMutation.isPending ? 'CONNECTING...' : 'GENERATE CITY'}
+              </span>
+              <span className="btn-icon">→</span>
+            </button>
+          </form>
 
-        {/* Dynamic Stats Grid (displays either default or completed parse results) */}
-        <div className="stats-grid">
-          <StatCounter 
-            label="LANGUAGES PARSED" 
-            value={jobStatus?.result ? Object.values(jobStatus.result.repository.stats.languageBreakdown).filter(v => v > 0).length : 9} 
-          />
-          <StatCounter 
-            label="TOTAL FILES MAPPED" 
-            value={jobStatus?.result ? jobStatus.result.repository.stats.totalFiles : 10000} 
-          />
-          <StatCounter 
-            label="TOTAL LOC ANALYZED" 
-            value={jobStatus?.result ? jobStatus.result.repository.stats.totalLoc : 50000} 
-          />
-          <StatCounter 
-            label="DISTRICTS PACKED" 
-            value={jobStatus?.result ? jobStatus.result.repository.stats.totalDirectories : 12} 
-          />
-        </div>
+          {/* Ingestion Status Terminal Overlay */}
+          {jobStatus && (
+            <div className="terminal-console">
+              <div className="console-header">
+                <span className="console-title">INGESTION PIPELINE LOGS</span>
+                <span className="console-progress">{jobStatus.progress}%</span>
+              </div>
+              <div className="console-body">
+                <p className="log-line text-signal-dim">[pipeline] Target: {jobStatus.repoName}</p>
+                <p className="log-line text-signal-dim">[pipeline] Job ID: {jobStatus.jobId}</p>
 
-        {/* Feature Cards */}
-        <div className="feature-grid">
-          <div className="feature-card">
-            <div className="feature-icon">◆</div>
-            <h3>MULTI-LANGUAGE PARSING</h3>
-            <p>Tree-sitter WASM grammars for TS, Python, Go, Rust, C/C++, Java, Ruby</p>
+                {jobStatus.status === 'queued' && (
+                  <p className="log-line text-signal-core anim-pulse">⏳ Queueing job in background pool...</p>
+                )}
+                {jobStatus.status === 'cloning' && (
+                  <p className="log-line text-signal-core anim-pulse">📥 [CLONING] Securely cloning repo into cgroup container...</p>
+                )}
+                {jobStatus.status === 'parsing' && (
+                  <p className="log-line text-signal-core">
+                    ⚙️ [PARSING] Analyzing syntax with Web Tree-Sitter grammars ({jobStatus.progress}%)
+                  </p>
+                )}
+                {jobStatus.status === 'layouting' && (
+                  <p className="log-line text-signal-core anim-pulse">🧬 [LAYOUTING] Packing buildings into district structures...</p>
+                )}
+                {jobStatus.status === 'failed' && (
+                  <p className="log-line text-signal-critical">
+                    ❌ [ERROR] Ingestion crashed: {jobStatus.error || 'Unknown pipeline failure.'}
+                  </p>
+                )}
+              </div>
+              {/* Progress bar line */}
+              <div className="console-bar-container">
+                <div 
+                  className={`console-bar ${jobStatus.status === 'failed' ? 'bg-signal-critical' : 'bg-signal-core'}`}
+                  style={{ width: `${jobStatus.progress}%` }} 
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Dynamic Stats Grid (displays either default or completed parse results) */}
+          <div className="stats-grid">
+            <StatCounter label="LANGUAGES PARSED" value={9} />
+            <StatCounter label="TOTAL FILES MAPPED" value={10000} />
+            <StatCounter label="TOTAL LOC ANALYZED" value={50000} />
+            <StatCounter label="DISTRICTS PACKED" value={12} />
           </div>
-          <div className="feature-card">
-            <div className="feature-icon">◈</div>
-            <h3>1 FILE = 1 BUILDING</h3>
-            <p>Every source file becomes a unique skyscraper. No aggregation. No shortcuts.</p>
+
+          {/* Feature Cards */}
+          <div className="feature-grid">
+            <div className="feature-card">
+              <div className="feature-icon">◆</div>
+              <h3>MULTI-LANGUAGE PARSING</h3>
+              <p>Tree-sitter WASM grammars for TS, Python, Go, Rust, C/C++, Java, Ruby</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">◈</div>
+              <h3>1 FILE = 1 BUILDING</h3>
+              <p>Every source file becomes a unique skyscraper. No aggregation. No shortcuts.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">◇</div>
+              <h3>REAL-TIME WebGL</h3>
+              <p>React Three Fiber + instanced rendering. 60 FPS at 5,000+ buildings.</p>
+            </div>
           </div>
-          <div className="feature-card">
-            <div className="feature-icon">◇</div>
-            <h3>REAL-TIME WebGL</h3>
-            <p>React Three Fiber + instanced rendering. 60 FPS at 5,000+ buildings.</p>
+        </main>
+      ) : (
+        /* Minimized Left HUD Panel during active WebGL session */
+        <div 
+          style={{
+            position: 'fixed',
+            left: '20px',
+            top: '70px',
+            zIndex: 100,
+            width: '280px',
+            background: 'rgba(0, 0, 0, 0.85)',
+            border: '1px solid var(--border)',
+            padding: '20px',
+            fontFamily: 'var(--font-mono)',
+            boxShadow: 'var(--glow-sm)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div style={{ fontSize: '11px', color: 'var(--signal-dim)', marginBottom: '4px' }}>METROPOLIS STATS</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--signal-bright)', marginBottom: '16px', wordBreak: 'break-all' }}>
+            {jobStatus!.repoName}
           </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border)', paddingBottom: '4px' }}>
+              <span style={{ color: 'var(--signal-dim)' }}>Files:</span>
+              <span style={{ color: 'var(--signal-core)', fontWeight: 'bold' }}>{jobStatus!.result!.repository.stats.totalFiles}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border)', paddingBottom: '4px' }}>
+              <span style={{ color: 'var(--signal-dim)' }}>LOC:</span>
+              <span style={{ color: 'var(--signal-core)', fontWeight: 'bold' }}>{jobStatus!.result!.repository.stats.totalLoc.toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--border)', paddingBottom: '4px' }}>
+              <span style={{ color: 'var(--signal-dim)' }}>Districts:</span>
+              <span style={{ color: 'var(--signal-core)', fontWeight: 'bold' }}>{jobStatus!.result!.repository.stats.totalDirectories}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleReset}
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: '1px solid var(--signal-core)',
+              color: 'var(--signal-core)',
+              padding: '10px',
+              fontFamily: 'inherit',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(57, 255, 20, 0.1)';
+              e.currentTarget.style.boxShadow = 'var(--glow-sm)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            DISCONNECT CLIENT
+          </button>
         </div>
-      </main>
+      )}
 
       {/* ── HUD Bottom Bar ───────────────────────────────── */}
       <footer className="hud-bottom">
-        <span className="hud-text">PHASE::1_INGESTION_PIPELINE_COMPLETE</span>
+        <span className="hud-text">
+          {isComplete ? `METROPOLIS::${jobStatus!.result!.repository.commitSha.slice(0, 7)}` : 'PHASE::1_INGESTION_PIPELINE_COMPLETE'}
+        </span>
         <span className="hud-text">ENGINE::R3F_v9</span>
         <span className="hud-text">PIPELINE::FASTIFY+tRPC</span>
       </footer>

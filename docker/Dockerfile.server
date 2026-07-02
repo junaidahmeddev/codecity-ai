@@ -1,0 +1,52 @@
+# ── 1. Build Stage ──────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+# Copy workspace metadata and locks
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY apps/server/package.json ./apps/server/
+
+# Install dependencies (only server & shared-types)
+RUN pnpm install --frozen-lockfile --filter=server --filter=shared-types
+
+# Copy source code
+COPY packages/shared-types ./packages/shared-types
+COPY apps/server ./apps/server
+
+# Build packages
+RUN pnpm --filter=shared-types build
+RUN pnpm --filter=server build
+
+# Prune dev dependencies for production footprint
+RUN pnpm install --prod --frozen-lockfile --filter=server
+
+# ── 2. Execution Stage ──────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Run server with non-root security privileges
+RUN addgroup -g 1001 -S nodejs && adduser -S node -u 1001
+
+# Copy build outputs and production dependencies
+COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/shared-types ./packages/shared-types
+COPY --from=builder /app/apps/server ./apps/server
+
+# Setup secure isolated sandbox mounts
+RUN mkdir -p /app/apps/server/.sandbox && \
+    chown -R node:nodejs /app
+
+USER node
+
+EXPOSE 3001
+
+ENV NODE_ENV=production
+ENV PORT=3001
+
+CMD ["node", "apps/server/dist/server.js"]

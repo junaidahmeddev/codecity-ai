@@ -12,10 +12,10 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  server:
     build:
       context: .
-      dockerfile: apps/backend/Dockerfile
+      dockerfile: docker/Dockerfile.server
     ports:
       - "3001:3001"
     env_file:
@@ -24,16 +24,16 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - sandbox_data:/app/.sandbox
+      - sandbox_data:/app/apps/server/.sandbox
 
-  frontend:
+  web:
     build:
       context: .
-      dockerfile: apps/frontend/Dockerfile
+      dockerfile: docker/Dockerfile.web
     ports:
-      - "3000:3000"
+      - "80:80"
     depends_on:
-      - backend
+      - server
 
 volumes:
   redis_data:

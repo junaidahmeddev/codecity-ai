@@ -28,28 +28,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 11.9.0
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build shared types
-        run: npm run build:shared
+        run: pnpm build:shared
 
       - name: Typecheck all workspaces
-        run: npm run typecheck
+        run: pnpm typecheck
 
       - name: Lint
-        run: npm run lint
-        continue-on-error: true
+        run: pnpm lint
 
-      # TODO (Phase 6): Uncomment when Vitest is configured
-      # - name: Unit Tests
-      #   run: npm run test
+      - name: Unit Tests
+        run: pnpm test
 
       # TODO (Phase 6): Lighthouse perf budget gate
       # - name: Lighthouse CI

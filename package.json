@@ -4,21 +4,24 @@
   "private": true,
   "description": "Transform GitHub repositories into interactive 3D Cyberpunk Metropolises",
   "scripts": {
-    "dev": "npm run dev --workspace=apps/frontend & npm run dev --workspace=apps/backend",
-    "dev:frontend": "npm run dev --workspace=apps/frontend",
-    "dev:backend": "npm run dev --workspace=apps/backend",
-    "build:shared": "npm run build --workspace=packages/shared",
-    "build": "npm run build:shared && npm run build --workspace=apps/backend && npm run build --workspace=apps/frontend",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
+    "dev": "pnpm --filter=web dev & pnpm --filter=server dev",
+    "dev:web": "pnpm --filter=web dev",
+    "dev:server": "pnpm --filter=server dev",
+    "build:shared": "pnpm --filter=shared-types build",
+    "build": "pnpm --filter=shared-types build && pnpm --filter=server build && pnpm --filter=web build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
   "engines": {
     "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

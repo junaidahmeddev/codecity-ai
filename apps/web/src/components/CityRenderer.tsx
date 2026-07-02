@@ -10,6 +10,9 @@ import {
   createFallbackGeometry
 } from './SkyscraperGeometries.js';
 
+import { Html } from '@react-three/drei';
+import { useStore } from '../store/useStore.js';
+
 interface CityRendererProps {
   layout: CityLayout;
   setBloomIntensity: (intensity: number) => void;
@@ -24,6 +27,11 @@ const TIER_COLORS = {
 
 export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
   const { camera } = useThree();
+
+  const setHoveredBuildingId = useStore((state) => state.setHoveredBuildingId);
+  const setSelectedBuildingId = useStore((state) => state.setSelectedBuildingId);
+  const selectedBuildingId = useStore((state) => state.selectedBuildingId);
+  const repository = useStore((state) => state.repository);
 
   // Create references for high-detail wireframe InstancedMeshes
   const detailMeshes = {
@@ -86,10 +94,40 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
     return groups;
   }, [layout]);
 
-  // Find the highest centrality building for the vertical beacon
+  const selectedBuilding = useMemo(() => {
+    if (!selectedBuildingId) return null;
+    return layout.buildings.find(b => b.fileId === selectedBuildingId) || null;
+  }, [selectedBuildingId, layout]);
+
+  const selectedFileNode = useMemo(() => {
+    if (!selectedBuilding || !repository) return null;
+    return repository.files[selectedBuilding.fileId] || null;
+  }, [selectedBuilding, repository]);
+
+  const handlePointerOver = (e: any, catKey: keyof typeof detailMeshes) => {
+    e.stopPropagation();
+    const instId = e.instanceId;
+    if (instId !== undefined) {
+      const b = categorizedBuildings[catKey][instId];
+      if (b) setHoveredBuildingId(b.fileId);
+    }
+  };
+
+  const handlePointerOut = () => {
+    setHoveredBuildingId(null);
+  };
+
+  const handleClick = (e: any, catKey: keyof typeof detailMeshes) => {
+    e.stopPropagation();
+    const instId = e.instanceId;
+    if (instId !== undefined) {
+      const b = categorizedBuildings[catKey][instId];
+      if (b) setSelectedBuildingId(b.fileId);
+    }
+  };
+
   const peakBuilding = useMemo(() => {
     if (layout.buildings.length === 0) return null;
-    // Find building in peak glow tier, or fallback to first building
     return layout.buildings.find(b => b.glowTier === 'peak') || layout.buildings[0];
   }, [layout]);
 
@@ -250,6 +288,9 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
             key={`detail-${key}`}
             ref={detailMeshes[key]}
             args={[geometries[key], null as any, categorizedBuildings[key].length]}
+            onClick={(e) => handleClick(e, key)}
+            onPointerOver={(e) => handlePointerOver(e, key)}
+            onPointerOut={handlePointerOut}
           >
             <meshBasicMaterial
               wireframe
@@ -269,6 +310,9 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
             key={`impostor-${key}`}
             ref={impostorMeshes[key]}
             args={[impostorGeometry, null as any, categorizedBuildings[key].length]}
+            onClick={(e) => handleClick(e, key)}
+            onPointerOver={(e) => handlePointerOver(e, key)}
+            onPointerOut={handlePointerOut}
           >
             <meshBasicMaterial
               wireframe
@@ -291,6 +335,73 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
             toneMapped={false}
           />
         </mesh>
+      )}
+
+      {/* ── Selected Building Holographic Panel ───────────── */}
+      {selectedBuilding && selectedFileNode && (
+        <Html
+          position={[
+            selectedBuilding.position.x,
+            selectedBuilding.dimensions.height + 4,
+            selectedBuilding.position.z
+          ]}
+          center
+          distanceFactor={15}
+          style={{
+            pointerEvents: 'auto',
+          }}
+        >
+          <div
+            style={{
+              background: '#010401',
+              border: '1.5px solid #39FF14',
+              padding: '12px 16px',
+              fontFamily: 'var(--font-mono)',
+              color: '#39FF14',
+              width: '280px',
+              fontSize: '11px',
+              boxShadow: '0 0 15px rgba(57, 255, 20, 0.3)',
+              position: 'relative',
+              borderRadius: '2px',
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedBuildingId(null);
+              }}
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '10px',
+                background: 'transparent',
+                border: 'none',
+                color: '#39FF14',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: '11px',
+                fontWeight: 'bold',
+              }}
+            >
+              [X]
+            </button>
+            
+            <div style={{ borderBottom: '1px dashed #1A5C25', paddingBottom: '6px', marginBottom: '8px', wordBreak: 'break-all', fontWeight: 'bold' }}>
+              FILE://{selectedBuilding.fileId}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div>LOC: <span style={{ color: '#A8FF7A', fontWeight: 'bold' }}>{selectedFileNode.loc}</span></div>
+              <div>COMPLEXITY: <span style={{ color: '#A8FF7A', fontWeight: 'bold' }}>{selectedFileNode.complexity.toFixed(2)}</span></div>
+              <div>IMPORTS: <span style={{ color: '#A8FF7A', fontWeight: 'bold' }}>{selectedFileNode.importCount}</span></div>
+              <div>EXPORTS: <span style={{ color: '#A8FF7A', fontWeight: 'bold' }}>{selectedFileNode.exportCount}</span></div>
+              <div>DEPENDENTS: <span style={{ color: '#A8FF7A', fontWeight: 'bold' }}>{selectedFileNode.dependents.length}</span></div>
+              <div style={{ textTransform: 'uppercase', fontSize: '9px', color: '#1A5C25', marginTop: '4px' }}>
+                LANG: {selectedFileNode.language} · GLOW: {selectedBuilding.glowTier}
+              </div>
+            </div>
+          </div>
+        </Html>
       )}
     </group>
   );

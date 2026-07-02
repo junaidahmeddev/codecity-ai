@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import { trpc } from './utils/trpc.js';
 import { CityScene } from './components/CityScene.js';
+import { CommandPalette } from './components/CommandPalette.js';
+import { Minimap } from './components/Minimap.js';
+import { SettingsPanel } from './components/SettingsPanel.js';
+import { useStore } from './store/useStore.js';
 
 /**
  * Matrix Digital Rain — lightweight canvas-based falling code effect.
@@ -172,6 +176,16 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  const setMetropolisData = useStore((state) => state.setMetropolisData);
+  const resetStore = useStore((state) => state.reset);
+  const currentBreadcrumb = useStore((state) => state.currentBreadcrumb);
+
+  useEffect(() => {
+    if (jobStatus?.status === 'complete' && jobStatus.result) {
+      setMetropolisData(jobStatus.result.repository, jobStatus.result.layout);
+    }
+  }, [jobStatus, setMetropolisData]);
+
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!repoUrl.trim()) return;
@@ -181,6 +195,7 @@ function App() {
   const handleReset = () => {
     setJobId(null);
     setRepoUrl('');
+    resetStore();
   };
 
   const isComplete = jobStatus?.status === 'complete' && !!jobStatus.result;
@@ -192,10 +207,13 @@ function App() {
 
       {/* ── HUD Top Bar ──────────────────────────────────── */}
       <header className="hud-top">
-        <div className="hud-left">
+        <div className="hud-left" style={{ maxWidth: '70%', overflow: 'hidden' }}>
           <span className="hud-indicator" />
-          <span className="hud-text">
-            {jobStatus ? `SYS::${jobStatus.status.toUpperCase()}` : 'SYS::ONLINE'}
+          <span className="hud-text" style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+            {currentBreadcrumb.length > 0 
+              ? currentBreadcrumb.join(' / ') 
+              : (jobStatus ? `SYS::${jobStatus.status.toUpperCase()}` : 'SYS::ONLINE')
+            }
           </span>
         </div>
         <div className="hud-center">
@@ -383,7 +401,12 @@ function App() {
           >
             DISCONNECT CLIENT
           </button>
-        </div>
+      {isComplete && (
+        <>
+          <CommandPalette />
+          <Minimap />
+          <SettingsPanel />
+        </>
       )}
 
       {/* ── HUD Bottom Bar ───────────────────────────────── */}

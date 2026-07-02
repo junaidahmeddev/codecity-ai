@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
 
   // ── Fastify instance with Pino structured logging ────────
-  const isDev = process.env["NODE_ENV"] === "development";
+  const isDev = process.env["NODE_ENV"] !== "production";
   const loggerOptions = isDev
     ? {
         level: config.server.logLevel,
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
 
   // ── CORS — allow frontend dev server ─────────────────────
   await server.register(cors, {
-    origin: process.env["NODE_ENV"] === "development" ? true : false,
+    origin: isDev ? true : false,
     credentials: true,
   });
 

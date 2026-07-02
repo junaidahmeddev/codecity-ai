@@ -21,6 +21,7 @@ import {
 import { loadConfig } from "@codecity/shared";
 import { appRouter, type AppRouter } from "./trpc/router.js";
 import { createContextFactory } from "./trpc/context.js";
+import { startIngestionWorker, stopIngestionWorker } from "./queue/ingestion.queue.js";
 
 async function main(): Promise<void> {
   // ── Validate config at startup (fail-fast) ───────────────
@@ -52,6 +53,9 @@ async function main(): Promise<void> {
     } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
   });
 
+  // ── Start Ingestion Worker Queue ────────────────────────
+  startIngestionWorker();
+
   // ── Start ────────────────────────────────────────────────
   try {
     const address = await server.listen({
@@ -72,6 +76,7 @@ async function main(): Promise<void> {
   // ── Graceful shutdown ────────────────────────────────────
   const shutdown = async (signal: string) => {
     server.log.info(`Received ${signal}, shutting down gracefully...`);
+    await stopIngestionWorker();
     await server.close();
     process.exit(0);
   };

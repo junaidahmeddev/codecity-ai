@@ -12,11 +12,13 @@ import {
 import { GitService } from '../services/git.service.js';
 import { WalkerService } from '../services/walker.service.js';
 import { ParserOrchestrator } from '../parser/parser.orchestrator.js';
+import { LayoutService } from '../services/layout.service.js';
 
 const config = loadConfig();
 const gitService = new GitService();
 const walkerService = new WalkerService();
 const parserOrchestrator = new ParserOrchestrator();
+const layoutService = new LayoutService();
 
 // Redis connection instance specifically for caching results
 const redisCache = new Redis({
@@ -162,13 +164,17 @@ export default async function processIngestionJob(job: Job<{ repoUrl: string }>)
       },
     };
 
+    // Compute Phase 2 Layout
+    const layout = layoutService.computeLayout(repository);
+
     // Cache result in Redis for layout simulation / cache hits
     const cacheKey = `repo:${cloneResult.commitSha}`;
-    await redisCache.set(cacheKey, JSON.stringify(repository), 'EX', 86400 * 7); // Cache for 7 days
+    const resultPayload = { repository, layout };
+    await redisCache.set(cacheKey, JSON.stringify(resultPayload), 'EX', 86400 * 7); // Cache for 7 days
 
     await job.updateProgress(100);
 
-    return { repository };
+    return resultPayload;
   } catch (err: any) {
     console.error(`Ingestion error in worker (job: ${jobId}):`, err);
     throw err;

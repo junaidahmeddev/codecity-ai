@@ -106,20 +106,9 @@ export const appRouter = t.router({
       let result = undefined;
 
       if (status === "complete" && job.returnvalue) {
-        // Prepare layout stub for Phase 2 compatibility
-        const repository = job.returnvalue.repository;
-        const commitSha = repository.commitSha;
-
-        // Stub layout output so the schema validation succeeds in Phase 1
-        const mockLayout = {
-          commitSha,
-          buildings: [],
-          districts: {},
-        };
-
         result = {
-          repository,
-          layout: mockLayout,
+          repository: job.returnvalue.repository,
+          layout: job.returnvalue.layout,
         };
       }
 

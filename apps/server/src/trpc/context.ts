@@ -11,6 +11,7 @@ import type { AppConfig } from "@codecity/shared-types";
 
 export interface TRPCContext {
   config: AppConfig;
+  res?: CreateFastifyContextOptions['res'];
 }
 
 /**
@@ -19,8 +20,8 @@ export interface TRPCContext {
  */
 export function createContextFactory(config: AppConfig) {
   return function createContext(
-    _opts: CreateFastifyContextOptions
+    opts: CreateFastifyContextOptions
   ): TRPCContext {
-    return { config };
+    return { config, res: opts.res };
   };
 }

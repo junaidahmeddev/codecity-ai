@@ -25,6 +25,14 @@ services:
         condition: service_healthy
     volumes:
       - sandbox_data:/app/apps/server/.sandbox
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
   web:
     build:

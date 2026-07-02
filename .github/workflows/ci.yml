@@ -54,6 +54,10 @@ jobs:
       - name: Unit Tests
         run: pnpm test
 
-      # TODO (Phase 6): Lighthouse perf budget gate
-      # - name: Lighthouse CI
-      #   run: npx lhci autorun
+      - name: Build all workspaces
+        run: pnpm build
+
+      - name: Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.13.x
+          lhci autorun --config=./lighthouserc.json

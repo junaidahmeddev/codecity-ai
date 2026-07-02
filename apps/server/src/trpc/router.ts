@@ -73,7 +73,7 @@ export const appRouter = t.router({
   status: t.procedure
     .input(z.object({ jobId: z.string() }))
     .output(IngestionJobStatusSchema)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { jobId } = input;
       const job = await ingestionQueue.getJob(jobId);
 
@@ -117,6 +117,9 @@ export const appRouter = t.router({
           repository: job.returnvalue.repository,
           layout: job.returnvalue.layout,
         };
+        if (ctx.res) {
+          ctx.res.header("Cache-Control", "public, max-age=31536000, immutable");
+        }
       }
 
       return {

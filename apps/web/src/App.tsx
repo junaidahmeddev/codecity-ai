@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import './App.css';
 import { trpc } from './utils/trpc.js';
-import { CityScene } from './components/CityScene.js';
+
+const LazyCityScene = lazy(() =>
+  import('./components/CityScene.js').then((module) => ({ default: module.CityScene }))
+);
 import { CommandPalette } from './components/CommandPalette.js';
 import { Minimap } from './components/Minimap.js';
 import { SettingsPanel } from './components/SettingsPanel.js';
@@ -219,7 +222,15 @@ function App() {
   return (
     <div className="app scanlines">
       {!isComplete && <MatrixRain />}
-      {isComplete && <CityScene layout={jobStatus.result!.layout} />}
+      {isComplete && (
+        <Suspense fallback={
+          <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000', color: '#39FF14', fontFamily: 'var(--font-mono)', fontSize: '14px', zIndex: 1 }}>
+            SYS::LOADING_3D_METROPOLIS...
+          </div>
+        }>
+          <LazyCityScene layout={jobStatus.result!.layout} />
+        </Suspense>
+      )}
 
       {/* ── HUD Top Bar ──────────────────────────────────── */}
       <header className="hud-top">

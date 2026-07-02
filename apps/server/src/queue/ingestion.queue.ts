@@ -1,5 +1,5 @@
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 import { loadConfig } from '@codecity/shared-types';
@@ -40,9 +40,11 @@ export function startIngestionWorker() {
     isTS ? '../workers/ingestion.processor.ts' : '../workers/ingestion.processor.js'
   );
 
-  console.log(`👷 Initializing BullMQ Worker with processor: ${processorPath}`);
+  const processorUrl = pathToFileURL(processorPath).href;
 
-  worker = new Worker(INGESTION_QUEUE_NAME, processorPath, {
+  console.log(`👷 Initializing BullMQ Worker with processor URL: ${processorUrl}`);
+
+  worker = new Worker(INGESTION_QUEUE_NAME, processorUrl, {
     connection: connection as any,
     useWorkerThreads: true, // Run in node worker thread
     concurrency: 2,        // Max 2 parallel parse jobs

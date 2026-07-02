@@ -401,6 +401,8 @@ function App() {
           >
             DISCONNECT CLIENT
           </button>
+        </div>
+      )}
       {isComplete && (
         <>
           <CommandPalette />

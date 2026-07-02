@@ -16,6 +16,10 @@ interface StoreState {
   bloomOverride: number;
   lodOverride: number;
   introPlaying: boolean;
+  
+  // AI Insights Overlay
+  insights: { fileId: string; type: 'warning' | 'info'; message: string }[] | null;
+  showInsights: boolean;
 
   // Actions
   setMetropolisData: (repo: UAMSRepository, layout: CityLayout) => void;
@@ -27,6 +31,8 @@ interface StoreState {
   setBloomOverride: (intensity: number) => void;
   setLodOverride: (distance: number) => void;
   setIntroPlaying: (playing: boolean) => void;
+  setInsights: (insights: { fileId: string; type: 'warning' | 'info'; message: string }[] | null) => void;
+  setShowInsights: (show: boolean) => void;
   reset: () => void;
 }
 
@@ -43,6 +49,8 @@ export const useStore = create<StoreState>((set) => ({
   bloomOverride: 1.6,
   lodOverride: 150,
   introPlaying: false,
+  insights: null,
+  showInsights: false,
 
   setMetropolisData: (repo, layout) => {
     set({
@@ -102,6 +110,8 @@ export const useStore = create<StoreState>((set) => ({
   setBloomOverride: (intensity) => set({ bloomOverride: intensity }),
   setLodOverride: (distance) => set({ lodOverride: distance }),
   setIntroPlaying: (playing) => set({ introPlaying: playing }),
+  setInsights: (insights) => set({ insights }),
+  setShowInsights: (show) => set({ showInsights: show }),
 
   reset: () =>
     set({
@@ -113,5 +123,7 @@ export const useStore = create<StoreState>((set) => ({
       cameraPosition: null,
       currentBreadcrumb: [],
       introPlaying: false,
+      insights: null,
+      showInsights: false,
     }),
 }));

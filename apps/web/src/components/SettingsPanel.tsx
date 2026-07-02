@@ -73,6 +73,25 @@ export function SettingsPanel() {
           </button>
         </div>
 
+        {/* AI Insights Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: 'var(--signal-dim)' }}>AI Insights:</span>
+          <button
+            onClick={() => useStore.getState().setShowInsights(!useStore.getState().showInsights)}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--signal-core)',
+              color: 'var(--signal-core)',
+              padding: '3px 8px',
+              fontFamily: 'inherit',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            {useStore((state) => state.showInsights) ? 'INSIGHTS ON' : 'INSIGHTS OFF'}
+          </button>
+        </div>
+
         {/* Bloom Override */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>

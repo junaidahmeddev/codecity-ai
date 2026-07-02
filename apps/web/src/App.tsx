@@ -171,12 +171,17 @@ function App() {
     }
   );
 
-  useEffect(() => {
-    const timer = setTimeout(() => setShowContent(true), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  // AI Insights Query
+  const { data: insights } = trpc.insights.useQuery(
+    {
+      commitSha: jobStatus?.result?.repository.commitSha || '',
+      fileIds: jobStatus?.result ? Object.keys(jobStatus.result.repository.files) : [],
+    },
+    { enabled: !!jobStatus?.result }
+  );
 
   const setMetropolisData = useStore((state) => state.setMetropolisData);
+  const setInsights = useStore((state) => state.setInsights);
   const resetStore = useStore((state) => state.reset);
   const currentBreadcrumb = useStore((state) => state.currentBreadcrumb);
 
@@ -185,6 +190,17 @@ function App() {
       setMetropolisData(jobStatus.result.repository, jobStatus.result.layout);
     }
   }, [jobStatus, setMetropolisData]);
+
+  useEffect(() => {
+    if (insights) {
+      setInsights(insights);
+    }
+  }, [insights, setInsights]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowContent(true), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();

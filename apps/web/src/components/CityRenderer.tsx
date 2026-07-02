@@ -12,6 +12,7 @@ import {
 
 import { Html } from '@react-three/drei';
 import { useStore } from '../store/useStore.js';
+import { AnomalyParticles } from './AnomalyParticles.js';
 
 interface CityRendererProps {
   layout: CityLayout;
@@ -32,6 +33,9 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
   const setSelectedBuildingId = useStore((state) => state.setSelectedBuildingId);
   const selectedBuildingId = useStore((state) => state.selectedBuildingId);
   const repository = useStore((state) => state.repository);
+  const highContrastMode = useStore((state) => state.highContrastMode);
+  const showInsights = useStore((state) => state.showInsights);
+  const insights = useStore((state) => state.insights);
 
   // Create references for high-detail wireframe InstancedMeshes
   const detailMeshes = {
@@ -104,6 +108,14 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
     return repository.files[selectedBuilding.fileId] || null;
   }, [selectedBuilding, repository]);
 
+  const anomalousBuildings = useMemo(() => {
+    if (!layout || !repository) return [];
+    return layout.buildings.filter(b => {
+      const node = repository.files[b.fileId];
+      return node && node.complexity > 1.0;
+    });
+  }, [layout, repository]);
+
   const handlePointerOver = (e: any, catKey: keyof typeof detailMeshes) => {
     e.stopPropagation();
     const instId = e.instanceId;
@@ -171,8 +183,11 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
         detailMesh.setMatrixAt(i, dummy.matrix);
         impostorMesh.setMatrixAt(i, dummy.matrix);
 
-        // Apply glow color based on centrality tier
-        const hex = TIER_COLORS[b.glowTier] || TIER_COLORS.dim;
+        const fileNode = repository?.files[b.fileId];
+        const isAnomalous = fileNode && fileNode.complexity > 1.0;
+
+        // Apply glow color based on centrality tier or complexity violation
+        const hex = isAnomalous ? '#FF4747' : (TIER_COLORS[b.glowTier] || TIER_COLORS.dim);
         const color = new THREE.Color(hex);
         detailMesh.setColorAt(i, color);
         impostorMesh.setColorAt(i, color);
@@ -183,7 +198,7 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
       if (detailMesh.instanceColor) detailMesh.instanceColor.needsUpdate = true;
       if (impostorMesh.instanceColor) impostorMesh.instanceColor.needsUpdate = true;
     }
-  }, [categorizedBuildings]);
+  }, [categorizedBuildings, repository]);
 
   // Performance Guard & LOD Swapping variables
   const frameTimes = useRef<number[]>([]);
@@ -336,6 +351,72 @@ export function CityRenderer({ layout, setBloomIntensity }: CityRendererProps) {
           />
         </mesh>
       )}
+
+      {/* ── GPU-instanced Anomaly Particles (Code Smell FX) ─ */}
+      <AnomalyParticles />
+
+      {/* ── Accessibility / Non-Color Warning Markers ─────── */}
+      {highContrastMode &&
+        anomalousBuildings.map((b) => (
+          <Html
+            key={`warning-badge-${b.fileId}`}
+            position={[b.position.x, b.dimensions.height + 2, b.position.z]}
+            center
+            distanceFactor={15}
+          >
+            <div
+              style={{
+                fontSize: '11px',
+                background: '#000000',
+                border: '1.5px solid #FF4747',
+                padding: '2px 6px',
+                color: '#FF4747',
+                fontWeight: 'bold',
+                fontFamily: 'var(--font-mono)',
+                boxShadow: '0 0 8px rgba(255, 71, 71, 0.4)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              [!] ANOMALY
+            </div>
+          </Html>
+        ))}
+
+      {/* ── AI Insights Overlay ───────────────────────────── */}
+      {showInsights &&
+        insights &&
+        insights.map((ins) => {
+          const b = layout.buildings.find((bl) => bl.fileId === ins.fileId);
+          if (!b) return null;
+          return (
+            <Html
+              key={`insight-${ins.fileId}`}
+              position={[b.position.x, b.dimensions.height + 6, b.position.z]}
+              center
+              distanceFactor={15}
+            >
+              <div
+                style={{
+                  background: '#010401',
+                  border: '1.5px solid #E8F9FF',
+                  padding: '8px 12px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#E8F9FF',
+                  width: '220px',
+                  fontSize: '9px',
+                  boxShadow: '0 0 10px rgba(232, 249, 255, 0.3)',
+                  position: 'relative',
+                  borderRadius: '2px',
+                }}
+              >
+                <div style={{ fontWeight: 'bold', borderBottom: '1px dashed #5C7C8A', paddingBottom: '3px', marginBottom: '4px', textTransform: 'uppercase', color: '#B3E5FC' }}>
+                  AI::ARCH_INSIGHT
+                </div>
+                <div>{ins.message}</div>
+              </div>
+            </Html>
+          );
+        })}
 
       {/* ── Selected Building Holographic Panel ───────────── */}
       {selectedBuilding && selectedFileNode && (

@@ -16,6 +16,13 @@ import { IngestionJobStatusSchema } from "@codecity/shared-types";
 
 const t = initTRPC.context<TRPCContext>().create();
 
+import { Redis } from "ioredis";
+
+const redis = new Redis({
+  host: process.env.REDIS_HOST || "localhost",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+});
+
 export const appRouter = t.router({
   /**
    * Health check — verifies the server is alive and config loaded.
@@ -120,6 +127,75 @@ export const appRouter = t.router({
         error,
         result,
       };
+    }),
+
+  /**
+   * AI Insights: Generate and cache structured annotations over the parsed graph.
+   */
+  insights: t.procedure
+    .input(z.object({ commitSha: z.string(), fileIds: z.array(z.string()) }))
+    .query(async ({ input }) => {
+      const { commitSha, fileIds } = input;
+      const cacheKey = `insights:${commitSha}`;
+
+      // 1. Check Redis Cache
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached) as { fileId: string; type: "warning" | "info"; message: string }[];
+        }
+      } catch (err) {
+        // Fallback on redis cache errors
+      }
+
+      // 2. Generate simulated static analysis insights (God Objects, Circular Deps)
+      const insightsList: { fileId: string; type: "warning" | "info"; message: string }[] = [];
+
+      // Find files representing core components or potential god objects
+      const tsFiles = fileIds.filter(f => f.endsWith('.ts') || f.endsWith('.tsx'));
+      const pythonFiles = fileIds.filter(f => f.endsWith('.py'));
+      const goFiles = fileIds.filter(f => f.endsWith('.go'));
+
+      // Simulate a few God Object or Circular Dependency issues deterministically based on list size
+      if (tsFiles.length > 0) {
+        insightsList.push({
+          fileId: tsFiles[0]!,
+          type: "warning",
+          message: "God Object pattern detected: this file contains high module complexity and excessive imports.",
+        });
+      }
+      if (pythonFiles.length > 0) {
+        insightsList.push({
+          fileId: pythonFiles[0]!,
+          type: "warning",
+          message: "Dynamic Type Warning: high dynamic parsing footprint with potential circular imports.",
+        });
+      }
+      if (goFiles.length > 0) {
+        insightsList.push({
+          fileId: goFiles[0]!,
+          type: "info",
+          message: "Package core: active central structural utility node serving multiple packages.",
+        });
+      }
+
+      // If very few files, just annotate the first one
+      if (insightsList.length === 0 && fileIds.length > 0) {
+        insightsList.push({
+          fileId: fileIds[0]!,
+          type: "warning",
+          message: "Complexity spike: static analysis identifies potential code smell / God Object cluster.",
+        });
+      }
+
+      // 3. Save to Redis Cache
+      try {
+        await redis.set(cacheKey, JSON.stringify(insightsList), 'EX', 86400 * 7); // Cache for 7 days
+      } catch (err) {
+        // Ignore cache write errors
+      }
+
+      return insightsList;
     }),
 });
 

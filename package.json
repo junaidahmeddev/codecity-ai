@@ -4,7 +4,7 @@
   "private": true,
   "description": "Transform GitHub repositories into interactive 3D Cyberpunk Metropolises",
   "scripts": {
-    "dev": "pnpm --filter=web dev & pnpm --filter=server dev",
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:server\"",
     "dev:web": "pnpm --filter=web dev",
     "dev:server": "pnpm --filter=server dev",
     "build:shared": "pnpm --filter=shared-types build",
@@ -19,6 +19,7 @@
     "node": ">=20.0.0"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "eslint": "^9.16.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",

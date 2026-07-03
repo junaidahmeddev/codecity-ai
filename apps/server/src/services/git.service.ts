@@ -1,6 +1,7 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
 import { loadConfig } from '@codecity/shared-types';
@@ -11,10 +12,9 @@ export class GitService {
   private sandboxDir: string;
 
   constructor() {
-    // Resolve sandbox relative to backend root
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    this.sandboxDir = path.resolve(__dirname, '../../../.sandbox');
+    // Use OS temp directory to avoid Windows Defender/indexer file locks
+    // inside the project tree. Each clone gets a unique UUID subdirectory.
+    this.sandboxDir = path.join(os.tmpdir(), 'codecity-sandbox');
 
     if (!fs.existsSync(this.sandboxDir)) {
       fs.mkdirSync(this.sandboxDir, { recursive: true });
@@ -43,10 +43,9 @@ export class GitService {
       throw new Error(`Security Exception: Local host clones are blocked.`);
     }
 
-    const localPath = path.join(this.sandboxDir, jobId);
-    if (fs.existsSync(localPath)) {
-      fs.rmSync(localPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
-    }
+    // Use UUID to guarantee unique directory per clone attempt (no collisions)
+    const uniqueId = `${jobId}-${crypto.randomUUID().slice(0, 8)}`;
+    const localPath = path.join(this.sandboxDir, uniqueId);
 
     const git: SimpleGit = simpleGit();
 
@@ -65,17 +64,15 @@ export class GitService {
         ),
       ]);
     } catch (err: any) {
-      // Clean up directory on failure
-      if (fs.existsSync(localPath)) {
-        fs.rmSync(localPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
-      }
+      // Clean up directory on failure (best-effort)
+      this.cleanup(localPath);
       throw new Error(`Git clone failed: ${err.message || err}`);
     }
 
     // ── 3. Size validation post-clone ──────────────────────
     const folderSizeMb = this.getFolderSizeMb(localPath);
     if (folderSizeMb > config.guardrails.maxRepoSizeMb) {
-      fs.rmSync(localPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+      this.cleanup(localPath);
       throw new Error(
         `Repository size exceeds limit: ${folderSizeMb.toFixed(1)}MB (Limit: ${config.guardrails.maxRepoSizeMb}MB)`
       );
@@ -87,7 +84,7 @@ export class GitService {
       const commitSha = (await localGit.revparse(['HEAD'])).trim();
       return { localPath, commitSha };
     } catch (err: any) {
-      fs.rmSync(localPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+      this.cleanup(localPath);
       throw new Error(`Failed to read commit SHA: ${err.message || err}`);
     }
   }
@@ -121,33 +118,16 @@ export class GitService {
 
   /**
    * Cleans up the cloned repository folder.
-   * On Windows, .git pack files may be temporarily locked (EBUSY/EPERM).
-   * Retries with backoff to handle transient file locks gracefully.
+   * Best-effort: on Windows, .git pack files may be transiently locked.
+   * Failures are logged but never thrown.
    */
   cleanup(localPath: string): void {
-    if (!fs.existsSync(localPath) || !localPath.startsWith(this.sandboxDir)) {
-      return;
-    }
-
-    const maxRetries = 5;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        fs.rmSync(localPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
-        return; // Success
-      } catch (err: any) {
-        if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries - 1) {
-          // Wait before retrying (exponential backoff: 500ms, 1s, 2s, 4s)
-          const delay = 500 * Math.pow(2, attempt);
-          const start = Date.now();
-          while (Date.now() - start < delay) {
-            // Synchronous busy-wait (acceptable in cleanup path)
-          }
-          continue;
-        }
-        // Final attempt or non-retryable error — log and move on
-        console.warn(`⚠️ Cleanup warning: Could not fully remove ${localPath}: ${err.message}`);
-        return;
+    try {
+      if (fs.existsSync(localPath)) {
+        fs.rmSync(localPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 });
       }
+    } catch (err: any) {
+      console.warn(`⚠️ Cleanup warning: Could not remove ${localPath}: ${err.message}`);
     }
   }
 }

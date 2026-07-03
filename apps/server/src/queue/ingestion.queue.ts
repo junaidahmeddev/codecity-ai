@@ -40,11 +40,12 @@ export function startIngestionWorker() {
     isTS ? '../workers/ingestion.processor.ts' : '../workers/ingestion.processor.js'
   );
 
-  const processorUrl = pathToFileURL(processorPath).href;
+  // Normalize backslashes to forward slashes for Windows ESM loader and fs compatibility
+  const normalizedProcessorPath = processorPath.replace(/\\/g, '/');
 
-  console.log(`👷 Initializing BullMQ Worker with processor URL: ${processorUrl}`);
+  console.log(`👷 Initializing BullMQ Worker with processor path: ${normalizedProcessorPath}`);
 
-  worker = new Worker(INGESTION_QUEUE_NAME, processorUrl, {
+  worker = new Worker(INGESTION_QUEUE_NAME, normalizedProcessorPath, {
     connection: connection as any,
     useWorkerThreads: true, // Run in node worker thread
     concurrency: 2,        // Max 2 parallel parse jobs

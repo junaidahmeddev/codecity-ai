@@ -1,8 +1,8 @@
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 import { loadConfig } from '@codecity/shared-types';
+import processIngestionJob from '../workers/ingestion.processor.js';
 
 const config = loadConfig();
 
@@ -26,29 +26,15 @@ export const ingestionQueue = new Queue(INGESTION_QUEUE_NAME, {
 
 export const queueEvents = new QueueEvents(INGESTION_QUEUE_NAME, { connection: connection as any });
 
-// Initialize the worker running in sandbox mode (separate thread/process)
+// Initialize the worker with inline processor (no sandboxed file path)
 let worker: Worker | null = null;
 
 export function startIngestionWorker() {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  
-  // Point to the compiled JS file in production, or TS file in tsx dev mode
-  const isTS = __filename.endsWith('.ts');
-  const processorPath = path.resolve(
-    __dirname,
-    isTS ? '../workers/ingestion.processor.ts' : '../workers/ingestion.processor.js'
-  );
+  console.log('👷 Initializing BullMQ Worker with inline processor function');
 
-  // Normalize to file URL object for Windows dynamic ESM loader and BullMQ compatibility
-  const processorUrl = pathToFileURL(processorPath);
-
-  console.log(`👷 Initializing BullMQ Worker with processor URL: ${processorUrl.href}`);
-
-  worker = new Worker(INGESTION_QUEUE_NAME, processorUrl as any, {
+  worker = new Worker(INGESTION_QUEUE_NAME, processIngestionJob, {
     connection: connection as any,
-    useWorkerThreads: true, // Run in node worker thread
-    concurrency: 2,        // Max 2 parallel parse jobs
+    concurrency: 2,
   });
 
   worker.on('active', (job) => {

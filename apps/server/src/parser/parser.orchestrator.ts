@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import ParserClass from 'web-tree-sitter';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { createRequire } from 'module';
 import type { Parser as ParserType, Tree, Language } from 'web-tree-sitter';
 import { loadConfig } from '@codecity/shared-types';
 import type { LanguageAdapter, ParseResult } from './adapters/base.adapter.js';
@@ -10,7 +10,9 @@ import { PythonAdapter } from './adapters/python.adapter.js';
 import { GoAdapter } from './adapters/go.adapter.js';
 import { FallbackAdapter } from './adapters/fallback.adapter.js';
 
-const Parser = ParserClass as any;
+// web-tree-sitter is a CJS module without a default ESM export — use createRequire
+const require = createRequire(import.meta.url);
+const Parser = require('web-tree-sitter');
 const config = loadConfig();
 
 export class ParserOrchestrator {

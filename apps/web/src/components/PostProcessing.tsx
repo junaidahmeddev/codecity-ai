@@ -7,7 +7,7 @@ interface PostProcessingProps {
 
 export function PostProcessing({ bloomIntensity }: PostProcessingProps) {
   return (
-    <EffectComposer disableNormalPass>
+    <EffectComposer>
       <Bloom
         luminanceThreshold={0.01}
         luminanceSmoothing={0.9}

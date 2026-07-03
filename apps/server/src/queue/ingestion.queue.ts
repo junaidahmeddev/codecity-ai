@@ -54,7 +54,7 @@ export function startIngestionWorker() {
     console.log(`🔄 Ingestion Job ${job.id} started processing...`);
   });
 
-  worker.on('completed', (job, result) => {
+  worker.on('completed', (job, _result) => {
     console.log(`✅ Ingestion Job ${job.id} finished successfully!`);
   });
 

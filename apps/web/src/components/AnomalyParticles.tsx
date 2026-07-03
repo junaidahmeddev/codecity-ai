@@ -50,8 +50,9 @@ export function AnomalyParticles() {
 
   useFrame((state) => {
     if (materialRef.current) {
-      // Pass elapsed time to GPU vertex shader
-      materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
+      if (materialRef.current.uniforms?.uTime) {
+        materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
+      }
     }
   });
 

@@ -55,7 +55,7 @@ export function CityScene({ layout }: CitySceneProps) {
         {/* ── Matrix Grid Ground Plane ────────────────────── */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
           <planeGeometry args={[1000, 1000]} />
-          <meshBasicMaterial 
+          <meshStandardMaterial 
             color="#000000" 
             roughness={0.1}
             metalness={0.9}

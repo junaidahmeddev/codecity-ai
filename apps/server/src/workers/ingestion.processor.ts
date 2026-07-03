@@ -179,9 +179,15 @@ export default async function processIngestionJob(job: Job<{ repoUrl: string }>)
     console.error(`Ingestion error in worker (job: ${jobId}):`, err);
     throw err;
   } finally {
-    // Sandbox cleanup
+    // Sandbox cleanup — wrapped in try/catch because Windows may hold
+    // transient locks on .git pack files (EBUSY). The parsed result
+    // is already cached in Redis, so a cleanup failure is non-fatal.
     if (cloneResult) {
-      gitService.cleanup(cloneResult.localPath);
+      try {
+        gitService.cleanup(cloneResult.localPath);
+      } catch (cleanupErr: any) {
+        console.warn(`⚠️ Non-fatal cleanup error (job ${jobId}): ${cleanupErr.message}`);
+      }
     }
   }
 }
